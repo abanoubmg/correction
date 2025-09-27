@@ -42,6 +42,9 @@ class OverlayService : Service() {
     }
 
     fun showCorrections(corrections: List<CorrectionSuggestion>, source: AccessibilityNodeInfo) {
+        if (!source.refresh()) {
+            Log.w(TAG, "Failed to refresh source node for corrections")
+        }
         if (corrections.isEmpty()) {
             hideOverlay()
             return

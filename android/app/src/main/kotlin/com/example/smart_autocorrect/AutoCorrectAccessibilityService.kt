@@ -56,6 +56,18 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
         if (source.isEditable) {
             Log.d(TAG, "Editable field focused: ${source.className}")
             OverlayService.instance?.setActiveEditText(source)
+
+            val existingText = source.text?.toString()?.trim()
+            if (!existingText.isNullOrEmpty()) {
+                val corrections = checkForCorrections(existingText)
+                if (corrections.isNotEmpty()) {
+                    OverlayService.instance?.showCorrections(corrections, source)
+                } else {
+                    OverlayService.instance?.showCorrections(emptyList(), source)
+                }
+            } else {
+                OverlayService.instance?.showCorrections(emptyList(), source)
+            }
         }
     }
 
