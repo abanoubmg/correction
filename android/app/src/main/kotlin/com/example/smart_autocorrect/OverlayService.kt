@@ -7,14 +7,17 @@ import android.os.IBinder
 import android.os.Build
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.ScrollView
 import android.util.Log
 import android.os.Bundle
+import com.example.smart_autocorrect.R
+import android.widget.TextView
 
 class OverlayService : Service() {
     
@@ -25,8 +28,23 @@ class OverlayService : Service() {
 
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
+    private var overlayParams: WindowManager.LayoutParams? = null
+    private var lastOverlayX: Int = 50
+    private var lastOverlayY: Int = 200
     private var activeEditText: AccessibilityNodeInfo? = null
     private var currentCorrections: List<CorrectionSuggestion> = emptyList()
+    private var pendingCorrections: MutableSet<CorrectionSuggestion> = mutableSetOf()
+    private var appliedCorrections: MutableSet<CorrectionSuggestion> = mutableSetOf()
+    private var initialFocusText: String? = null
+    private var originalSnapshot: String? = null
+    private var autoAppliedMode: Boolean = false
+
+    private var suggestionContainer: LinearLayout? = null
+    private var statusText: TextView? = null
+    private var applyAllButton: Button? = null
+    private var revertButton: Button? = null
+    private var dismissButton: Button? = null
+    private var scrollView: ScrollView? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -41,20 +59,42 @@ class OverlayService : Service() {
         activeEditText = editText
     }
 
-    fun showCorrections(corrections: List<CorrectionSuggestion>, source: AccessibilityNodeInfo) {
+    fun setInitialText(text: String?) {
+        initialFocusText = text
+    }
+
+    fun dismissOverlay() {
+        runOnUiThread {
+            hideOverlay()
+        }
+    }
+
+    fun showCorrections(
+        corrections: List<CorrectionSuggestion>,
+        source: AccessibilityNodeInfo,
+        autoApply: Boolean = false
+    ) {
         if (!source.refresh()) {
             Log.w(TAG, "Failed to refresh source node for corrections")
         }
-        if (corrections.isEmpty()) {
-            hideOverlay()
-            return
-        }
-
         currentCorrections = corrections
         activeEditText = source
+        autoAppliedMode = autoApply
+        originalSnapshot = source.text?.toString() ?: originalSnapshot
+        if (initialFocusText == null) {
+            initialFocusText = originalSnapshot
+        }
+
+        pendingCorrections = corrections.toMutableSet()
+        appliedCorrections.clear()
 
         runOnUiThread {
-            createOverlayView(corrections)
+            createOrUpdateOverlay()
+            if (autoApply) {
+                applyAllCorrections(autoTriggered = true)
+            } else {
+                refreshOverlayUI()
+            }
         }
     }
 
@@ -63,80 +103,59 @@ class OverlayService : Service() {
         android.os.Handler(android.os.Looper.getMainLooper()).post(action)
     }
 
-    private fun createOverlayView(corrections: List<CorrectionSuggestion>) {
-        hideOverlay() // Remove existing overlay
-
+    private fun createOrUpdateOverlay() {
         val inflater = LayoutInflater.from(this)
-        overlayView = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(16, 16, 16, 16)
-            setBackgroundColor(android.graphics.Color.parseColor("#E3F2FD"))
-        }
 
-        val title = TextView(this).apply {
-            text = "Smart AutoCorrect"
-            textSize = 14f
-            setTextColor(android.graphics.Color.BLACK)
-            setPadding(0, 0, 0, 8)
-        }
-        (overlayView as LinearLayout).addView(title)
+        if (overlayView == null) {
+            overlayView = inflater.inflate(R.layout.overlay_corrections, null)
+            suggestionContainer = overlayView?.findViewById(R.id.correction_list)
+            statusText = overlayView?.findViewById(R.id.correction_status)
+            applyAllButton = overlayView?.findViewById(R.id.button_apply_all)
+            revertButton = overlayView?.findViewById(R.id.button_revert_all)
+            dismissButton = overlayView?.findViewById(R.id.button_dismiss)
+            scrollView = overlayView?.findViewById(R.id.correction_scroll)
 
-        corrections.forEach { correction ->
-            val correctionLayout = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, 4, 0, 4)
+            overlayView?.findViewById<View>(R.id.drag_handle)?.setOnTouchListener { _, event ->
+                handleDrag(event)
+                true
             }
 
-            val correctionText = TextView(this).apply {
-                text = "${correction.original} → ${correction.correction}"
-                textSize = 12f
-                setTextColor(android.graphics.Color.DKGRAY)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            applyAllButton?.setOnClickListener {
+                applyAllCorrections(autoTriggered = false)
             }
 
-            val applyButton = Button(this).apply {
-                text = "Apply"
-                textSize = 10f
-                setPadding(8, 4, 8, 4)
-                setOnClickListener {
-                    applyCorrection(correction)
-                }
+            revertButton?.setOnClickListener {
+                revertAllCorrections()
             }
 
-            correctionLayout.addView(correctionText)
-            correctionLayout.addView(applyButton)
-            (overlayView as LinearLayout).addView(correctionLayout)
-        }
+            dismissButton?.setOnClickListener {
+                hideOverlay()
+            }
 
-        val dismissButton = Button(this).apply {
-            text = "Dismiss"
-            textSize = 12f
-            setOnClickListener { hideOverlay() }
-        }
-        (overlayView as LinearLayout).addView(dismissButton)
+            val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE
 
-        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        else
-            WindowManager.LayoutParams.TYPE_PHONE
+            overlayParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                overlayType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = lastOverlayX
+                y = lastOverlayY
+            }
 
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            overlayType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.END
-            x = 50
-            y = 200
-        }
-
-        try {
-            windowManager?.addView(overlayView, params)
-            Log.d(TAG, "Overlay shown with ${corrections.size} corrections")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to show overlay", e)
+            try {
+                windowManager?.addView(overlayView, overlayParams)
+                Log.d(TAG, "Overlay created")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to show overlay", e)
+                return
+            }
         }
     }
 
@@ -144,31 +163,174 @@ class OverlayService : Service() {
         val editText = activeEditText ?: return
 
         try {
-            val currentText = editText.text?.toString() ?: return
-            val newText = currentText.replaceRange(
-                correction.startIndex,
-                correction.endIndex,
-                correction.correction
-            )
+            if (!pendingCorrections.contains(correction)) {
+                Log.d(TAG, "Correction already applied: ${correction.original}")
+                return
+            }
 
-            // Set the corrected text
+            appliedCorrections.add(correction)
+            pendingCorrections.remove(correction)
+            val baseText = originalSnapshot ?: editText.text?.toString() ?: return
+            val newText = buildCorrectedText(baseText, appliedCorrections)
+
             val arguments = Bundle()
             arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, newText)
             editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
             Log.d(TAG, "Applied correction: ${correction.original} → ${correction.correction}")
-            hideOverlay()
-
+            refreshOverlayUI()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply correction", e)
         }
     }
+
+    private fun applyAllCorrections(autoTriggered: Boolean) {
+        val editText = activeEditText ?: return
+        if (pendingCorrections.isEmpty()) {
+            refreshOverlayUI()
+            return
+        }
+
+        try {
+            appliedCorrections.addAll(pendingCorrections)
+            pendingCorrections.clear()
+            val baseText = originalSnapshot ?: editText.text?.toString() ?: return
+            val newText = buildCorrectedText(baseText, appliedCorrections)
+
+            val arguments = Bundle()
+            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, newText)
+            editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+            Log.d(TAG, "Applied ${appliedCorrections.size} corrections (${if (autoTriggered) "auto" else "manual"})")
+            refreshOverlayUI()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to apply all corrections", e)
+        }
+    }
+
+    private fun revertAllCorrections() {
+        val editText = activeEditText ?: return
+        val original = initialFocusText ?: originalSnapshot ?: return
+
+        try {
+            val arguments = Bundle()
+            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, original)
+            editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+            appliedCorrections.clear()
+            pendingCorrections = currentCorrections.toMutableSet()
+            Log.d(TAG, "Reverted to original text")
+            refreshOverlayUI()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to revert", e)
+        }
+    }
+
+    private fun buildCorrectedText(baseText: String, corrections: Set<CorrectionSuggestion>): String {
+        if (corrections.isEmpty()) return baseText
+        val sorted = corrections.sortedBy { it.startIndex }
+        val builder = StringBuilder()
+        var lastIndex = 0
+        for (correction in sorted) {
+            val start = correction.startIndex.coerceIn(0, baseText.length)
+            val end = correction.endIndex.coerceIn(start, baseText.length)
+            if (start >= lastIndex) {
+                builder.append(baseText.substring(lastIndex, start))
+                builder.append(correction.correction)
+                lastIndex = end
+            }
+        }
+        if (lastIndex < baseText.length) {
+            builder.append(baseText.substring(lastIndex))
+        }
+        return builder.toString()
+    }
+
+    private fun refreshOverlayUI() {
+        val container = suggestionContainer ?: return
+        container.removeAllViews()
+
+        val inflater = LayoutInflater.from(this)
+
+        currentCorrections.forEach { correction ->
+            val row = inflater.inflate(R.layout.overlay_correction_item, container, false)
+            val textView = row.findViewById<TextView>(R.id.correction_text)
+            val applyButton = row.findViewById<Button>(R.id.button_apply_single)
+            val statusChip = row.findViewById<TextView>(R.id.correction_status_chip)
+
+            textView.text = "${correction.original} → ${correction.correction}"
+
+            if (pendingCorrections.contains(correction)) {
+                applyButton.visibility = View.VISIBLE
+                statusChip.visibility = View.GONE
+                applyButton.setOnClickListener { applyCorrection(correction) }
+            } else {
+                applyButton.visibility = View.GONE
+                statusChip.visibility = View.VISIBLE
+                statusChip.text = getString(R.string.overlay_chip_applied)
+            }
+
+            container.addView(row)
+        }
+
+        statusText?.text = when {
+            autoAppliedMode && appliedCorrections.isNotEmpty() -> getString(R.string.overlay_status_auto_applied)
+            appliedCorrections.isNotEmpty() && pendingCorrections.isEmpty() -> getString(R.string.overlay_status_all_applied)
+            appliedCorrections.isEmpty() -> getString(R.string.overlay_status_suggestions)
+            else -> getString(R.string.overlay_status_partial_applied)
+        }
+
+        applyAllButton?.isEnabled = pendingCorrections.isNotEmpty()
+        revertButton?.isEnabled = appliedCorrections.isNotEmpty() || (initialFocusText != null && activeEditText?.text?.toString() != initialFocusText)
+        dismissButton?.isEnabled = true
+
+        overlayView?.alpha = 0.95f
+    }
+
+    private fun handleDrag(event: MotionEvent) {
+        val params = overlayParams ?: return
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                params.extraFlags = params.extraFlags
+                dragTouchX = event.rawX
+                dragTouchY = event.rawY
+                dragStartX = params.x
+                dragStartY = params.y
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val deltaX = (event.rawX - dragTouchX).toInt()
+                val deltaY = (event.rawY - dragTouchY).toInt()
+                params.x = dragStartX + deltaX
+                params.y = dragStartY + deltaY
+                lastOverlayX = params.x
+                lastOverlayY = params.y
+                windowManager?.updateViewLayout(overlayView, params)
+            }
+        }
+    }
+
+    private var dragTouchX: Float = 0f
+    private var dragTouchY: Float = 0f
+    private var dragStartX: Int = 0
+    private var dragStartY: Int = 0
 
     private fun hideOverlay() {
         overlayView?.let {
             try {
                 windowManager?.removeView(it)
                 overlayView = null
+                overlayParams = null
+                suggestionContainer = null
+                statusText = null
+                applyAllButton = null
+                revertButton = null
+                dismissButton = null
+                scrollView = null
+                originalSnapshot = null
+                initialFocusText = null
+                pendingCorrections.clear()
+                appliedCorrections.clear()
+                autoAppliedMode = false
                 Log.d(TAG, "Overlay hidden")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to hide overlay", e)

@@ -126,8 +126,10 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 
   void _showAddRuleDialog() {
-    _misspelledController.clear();
+    final pending = context.read<CorrectionService>().pendingMisspelled;
+    _misspelledController.text = pending ?? '';
     _correctionController.clear();
+    context.read<CorrectionService>().setPendingMisspelled(null);
     
     showDialog(
       context: context,
@@ -183,6 +185,7 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 
   void _showEditRuleDialog(CorrectionRule rule, int index) {
+    context.read<CorrectionService>().setPendingMisspelled(null);
     _misspelledController.text = rule.misspelled;
     _correctionController.text = rule.correction;
     
@@ -238,6 +241,7 @@ class _RulesScreenState extends State<RulesScreen> {
   }
 
   void _showDeleteConfirmation(int index) {
+    context.read<CorrectionService>().setPendingMisspelled(null);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/overlay_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/overlay_background"
+    android:elevation="6dp">
+
+    <LinearLayout
+        android:id="@+id/drag_handle"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="0dp">
+
+        <View
+            android:layout_width="36dp"
+            android:layout_height="4dp"
+            android:background="@drawable/overlay_drag_handle" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/correction_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/overlay_status_suggestions"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+        android:textColor="@color/overlay_text_primary"
+        android:paddingBottom="8dp" />
+
+    <ScrollView
+        android:id="@+id/correction_scroll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:overScrollMode="ifContentScrolls"
+        android:layout_marginTop="4dp"
+        android:maxHeight="240dp">
+
+        <LinearLayout
+            android:id="@+id/correction_list"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:divider="@drawable/overlay_divider"
+            android:showDividers="middle" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp">
+
+        <Button
+            android:id="@+id/button_revert_all"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/overlay_button_revert"
+            android:enabled="false" />
+
+        <Button
+            android:id="@+id/button_apply_all"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/overlay_button_apply_all"
+            android:layout_marginStart="8dp"
+            android:enabled="false" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/button_dismiss"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/overlay_button_dismiss"
+        android:textColor="@color/overlay_text_secondary" />
+
+</LinearLayout>
+

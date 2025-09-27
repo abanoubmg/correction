@@ -2,4 +2,13 @@
 <resources>
     <string name="app_name">Smart AutoCorrect</string>
     <string name="accessibility_service_description">Provides intelligent autocorrection across all apps by detecting misspelled words and offering corrections.</string>
+    <string name="overlay_status_suggestions">Suggestions available</string>
+    <string name="overlay_status_all_applied">All corrections applied</string>
+    <string name="overlay_status_partial_applied">Some corrections applied</string>
+    <string name="overlay_status_auto_applied">Corrections auto-applied</string>
+    <string name="overlay_button_apply">Apply</string>
+    <string name="overlay_button_apply_all">Apply all</string>
+    <string name="overlay_button_revert">Revert</string>
+    <string name="overlay_button_dismiss">Dismiss</string>
+    <string name="overlay_chip_applied">Applied</string>
 </resources>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:id="@+id/correction_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/overlay_text_primary"
+        android:textSize="14sp"
+        android:maxWidth="240dp"
+        android:layout_marginEnd="12dp"
+        android:textDirection="locale" />
+
+    <TextView
+        android:id="@+id/correction_status_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:background="@drawable/overlay_chip_background"
+        android:textColor="@color/overlay_text_secondary"
+        android:textSize="12sp"
+        android:text="@string/overlay_chip_applied"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/button_apply_single"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/overlay_button_apply"
+        android:textColor="@color/overlay_text_primary" />
+
+</LinearLayout>
+

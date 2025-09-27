@@ -164,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context, AccessibilityService service) {
+    final correctionService = context.watch<CorrectionService>();
     return Column(
       children: [
         if (!service.isAccessibilityEnabled)
@@ -208,6 +209,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+        if (service.isAccessibilityEnabled && service.canDrawOverlays) ...[
+          SizedBox(height: 8),
+          SwitchListTile(
+            title: Text('Auto apply corrections'),
+            subtitle: Text('Apply corrections without prompting'),
+            value: correctionService.autoCorrectEnabled,
+            onChanged: correctionService.setAutoCorrectEnabled,
+          ),
+          SwitchListTile(
+            title: Text('Show overlay suggestions'),
+            subtitle: Text('Display floating window with suggestions'),
+            value: correctionService.overlayEnabled,
+            onChanged: correctionService.setOverlayEnabled,
+          ),
+          SwitchListTile(
+            title: Text('Scan text on focus'),
+            subtitle: Text('Check existing text when a field gains focus'),
+            value: correctionService.showOnFocus,
+            onChanged: correctionService.setShowOnFocus,
+          ),
+        ],
         
         SizedBox(height: 8),
         SizedBox(

@@ -44,10 +44,30 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
         
         Log.d(TAG, "Text changed: $text")
         
-        // Check for misspelled words and send to overlay service
         val corrections = checkForCorrections(text)
-        if (corrections.isNotEmpty()) {
-            OverlayService.instance?.showCorrections(corrections, source)
+        if (corrections.isEmpty()) {
+            OverlayService.instance?.dismissOverlay()
+            return
+        }
+
+        val autoApply = autoCorrectEnabled()
+        val overlayOn = overlayEnabled()
+        val focusEnabled = showOnFocusEnabled()
+
+        if (autoApply) {
+            applyCorrectionsDirect(source, corrections)
+            OverlayService.instance?.dismissOverlay()
+            return
+        }
+
+        if (!overlayOn || !focusEnabled) {
+            OverlayService.instance?.dismissOverlay()
+            return
+        }
+
+        OverlayService.instance?.apply {
+            setActiveEditText(source)
+            showCorrections(corrections, source)
         }
     }
 
@@ -55,18 +75,53 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
         val source = event.source ?: return
         if (source.isEditable) {
             Log.d(TAG, "Editable field focused: ${source.className}")
-            OverlayService.instance?.setActiveEditText(source)
+            val overlayOn = overlayEnabled()
+            val autoApply = autoCorrectEnabled()
+            val focusEnabled = showOnFocusEnabled()
 
-            val existingText = source.text?.toString()?.trim()
-            if (!existingText.isNullOrEmpty()) {
-                val corrections = checkForCorrections(existingText)
-                if (corrections.isNotEmpty()) {
-                    OverlayService.instance?.showCorrections(corrections, source)
-                } else {
-                    OverlayService.instance?.showCorrections(emptyList(), source)
+            if (!focusEnabled) {
+                if (!overlayOn) {
+                    OverlayService.instance?.dismissOverlay()
                 }
-            } else {
-                OverlayService.instance?.showCorrections(emptyList(), source)
+                return
+            }
+
+            val existingText = source.text?.toString()
+
+            if (existingText.isNullOrEmpty()) {
+                if (!overlayOn || autoApply) {
+                    OverlayService.instance?.dismissOverlay()
+                } else {
+                    OverlayService.instance?.apply {
+                        setActiveEditText(source)
+                        setInitialText(existingText)
+                        showCorrections(emptyList(), source)
+                    }
+                }
+                return
+            }
+
+            val corrections = checkForCorrections(existingText)
+            if (corrections.isEmpty()) {
+                OverlayService.instance?.dismissOverlay()
+                return
+            }
+
+            if (autoApply) {
+                applyCorrectionsDirect(source, corrections)
+                OverlayService.instance?.dismissOverlay()
+                return
+            }
+
+            if (!overlayOn) {
+                OverlayService.instance?.dismissOverlay()
+                return
+            }
+
+            OverlayService.instance?.apply {
+                setActiveEditText(source)
+                setInitialText(existingText)
+                showCorrections(corrections, source)
             }
         }
     }
@@ -111,6 +166,67 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
         }
         
         return corrections
+    }
+
+    private fun overlayEnabled(): Boolean {
+        return try {
+            val prefs = getSharedPreferences("smart_autocorrect", MODE_PRIVATE)
+            prefs.getBoolean("overlay_enabled", true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read overlay preference", e)
+            true
+        }
+    }
+
+    private fun showOnFocusEnabled(): Boolean {
+        return try {
+            val prefs = getSharedPreferences("smart_autocorrect", MODE_PRIVATE)
+            prefs.getBoolean("show_on_focus", true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read focus preference", e)
+            true
+        }
+    }
+
+    private fun autoCorrectEnabled(): Boolean {
+        return try {
+            val prefs = getSharedPreferences("smart_autocorrect", MODE_PRIVATE)
+            prefs.getBoolean("auto_correct_enabled", false)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read auto correct preference", e)
+            false
+        }
+    }
+
+    private fun applyCorrectionsDirect(source: AccessibilityNodeInfo, corrections: List<CorrectionSuggestion>) {
+        val baseText = source.text?.toString() ?: return
+        val newText = buildCorrectedText(baseText, corrections)
+        val arguments = Bundle()
+        arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, newText)
+        val success = source.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        if (!success) {
+            Log.w(TAG, "Failed to apply corrections directly")
+        }
+    }
+
+    private fun buildCorrectedText(baseText: String, corrections: List<CorrectionSuggestion>): String {
+        if (corrections.isEmpty()) return baseText
+        val sorted = corrections.sortedBy { it.startIndex }
+        val builder = StringBuilder()
+        var lastIndex = 0
+        for (correction in sorted) {
+            val start = correction.startIndex.coerceIn(0, baseText.length)
+            val end = correction.endIndex.coerceIn(start, baseText.length)
+            if (start >= lastIndex) {
+                builder.append(baseText.substring(lastIndex, start))
+                builder.append(correction.correction)
+                lastIndex = end
+            }
+        }
+        if (lastIndex < baseText.length) {
+            builder.append(baseText.substring(lastIndex))
+        }
+        return builder.toString()
     }
 
     override fun onInterrupt() {

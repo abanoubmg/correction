@@ -48,6 +48,18 @@
         <service
             android:name="com.example.smart_autocorrect.OverlayService"
             android:exported="false" />
+
+        <activity
+            android:name="com.example.smart_autocorrect.AddRuleActivity"
+            android:exported="true"
+            android:label="Smart AutoCorrect"
+            android:theme="@style/LaunchTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
         
         <meta-data
             android:name="flutterEmbedding"

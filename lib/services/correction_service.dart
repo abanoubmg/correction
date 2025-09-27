@@ -28,13 +28,22 @@ class CorrectionRule {
 
 class CorrectionService extends ChangeNotifier {
   List<CorrectionRule> _rules = [];
+  bool _autoCorrectEnabled = false;
+  bool _overlayEnabled = true;
+  bool _showOnFocus = true;
+  String? _pendingMisspelled;
   
   List<CorrectionRule> get rules => _rules;
   List<CorrectionRule> get activeRules => _rules.where((rule) => rule.isActive).toList();
+  bool get autoCorrectEnabled => _autoCorrectEnabled;
+  bool get overlayEnabled => _overlayEnabled;
+  bool get showOnFocus => _showOnFocus;
+  String? get pendingMisspelled => _pendingMisspelled;
 
   CorrectionService() {
     _loadDefaultRules();
     _loadRules();
+    _loadSettings();
   }
 
   void _loadDefaultRules() {
@@ -68,6 +77,35 @@ class CorrectionService extends ChangeNotifier {
       }
     } catch (e) {
       print('Error loading rules: $e');
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _autoCorrectEnabled = prefs.getBool('auto_correct_enabled') ?? false;
+      _overlayEnabled = prefs.getBool('overlay_enabled') ?? true;
+      _showOnFocus = prefs.getBool('show_on_focus') ?? true;
+      _pendingMisspelled = prefs.getString('pending_misspelled');
+      notifyListeners();
+    } catch (e) {
+      print('Error loading settings: $e');
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('auto_correct_enabled', _autoCorrectEnabled);
+      await prefs.setBool('overlay_enabled', _overlayEnabled);
+      await prefs.setBool('show_on_focus', _showOnFocus);
+      if (_pendingMisspelled == null) {
+        await prefs.remove('pending_misspelled');
+      } else {
+        await prefs.setString('pending_misspelled', _pendingMisspelled!);
+      }
+    } catch (e) {
+      print('Error saving settings: $e');
     }
   }
 
@@ -105,6 +143,30 @@ class CorrectionService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setPendingMisspelled(String? value) {
+    _pendingMisspelled = value;
+    _saveSettings();
+    notifyListeners();
+  }
+
+  void setAutoCorrectEnabled(bool value) {
+    _autoCorrectEnabled = value;
+    _saveSettings();
+    notifyListeners();
+  }
+
+  void setOverlayEnabled(bool value) {
+    _overlayEnabled = value;
+    _saveSettings();
+    notifyListeners();
+  }
+
+  void setShowOnFocus(bool value) {
+    _showOnFocus = value;
+    _saveSettings();
+    notifyListeners();
+  }
+
   void removeRule(int index) {
     if (index >= 0 && index < _rules.length) {
       _rules.removeAt(index);
@@ -127,7 +189,7 @@ class CorrectionService extends ChangeNotifier {
   }
 
   String? getCorrection(String word) {
-    final cleanWord = word.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z]'), '');
+    final cleanWord = word.toLowerCase().replaceAll(RegExp(r'[^\p{L}]', unicode: true), '');
     final rule = activeRules.firstWhere(
       (rule) => rule.misspelled.toLowerCase() == cleanWord,
       orElse: () => CorrectionRule(misspelled: '', correction: ''),

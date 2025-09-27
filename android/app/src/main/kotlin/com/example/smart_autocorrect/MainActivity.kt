@@ -54,7 +54,7 @@ class MainActivity: FlutterActivity() {
             Settings.Secure.ACCESSIBILITY_ENABLED,
             0
         )
-
+        
         if (accessibilityEnabled == 1) {
             val enabledServices = Settings.Secure.getString(
                 contentResolver,
