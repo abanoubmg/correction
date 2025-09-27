@@ -1,0 +1,50 @@
+🚀 SMART AUTOCORRECT - QUICK SETUP GUIDE
+
+PREREQUISITES:
+✓ Android device with USB debugging enabled
+✓ Flutter SDK installed on your computer
+✓ Android device connected via USB
+
+BUILD & INSTALL:
+1. Double-click "build_and_install.bat" (Windows)
+   OR run: flutter pub get && flutter build apk && flutter install
+
+2. Wait for build to complete (may take 2-5 minutes first time)
+
+FIRST-TIME SETUP ON DEVICE:
+1. Open "Smart AutoCorrect" app
+2. Tap "Enable Accessibility Service" → Find "Smart AutoCorrect" → Turn ON
+3. Tap "Allow Overlay Permission" → Enable "Display over other apps"
+4. Tap the "+" button to add correction rules
+5. Add common mistakes like:
+   - teh → the
+   - recieve → receive
+   - youre → you're
+
+TESTING:
+1. Open any app (WhatsApp, SMS, Notes, etc.)
+2. Type a misspelled word you added
+3. See the correction overlay appear
+4. Tap "Apply" to use the correction
+
+TROUBLESHOOTING:
+❌ Overlay not showing?
+   → Check overlay permission is enabled
+   → Restart the app
+
+❌ Not detecting text?
+   → Ensure accessibility service is ON
+   → Try different apps (some may block access)
+
+❌ App crashes?
+   → Check Android version (needs 6.0+)
+   → Restart device
+
+FEATURES:
+✅ Works in ANY app (WhatsApp, Email, Browser, etc.)
+✅ Custom correction rules
+✅ Beautiful overlay interface
+✅ No internet required
+✅ Privacy-focused (no data collection)
+
+Happy typing! 🎉

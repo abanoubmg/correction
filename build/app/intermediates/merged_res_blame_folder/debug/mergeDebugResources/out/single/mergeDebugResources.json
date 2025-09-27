@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "com.example.smart_autocorrect.app-debug-42:/xml_accessibility_service_config.xml.flat",
+        "source": "com.example.smart_autocorrect.app-main-37:/xml/accessibility_service_config.xml"
+    }
+]
