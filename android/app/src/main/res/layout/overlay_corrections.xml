@@ -27,10 +27,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/overlay_status_suggestions"
+        android:textSize="13sp"
+        android:textStyle="normal"
         android:textColor="@color/overlay_text_primary"
-        android:textSize="14sp"
-        android:paddingBottom="8dp"
-        android:textStyle="bold" />
+        android:paddingBottom="8dp" />
 
     <ScrollView
         android:id="@+id/correction_scroll"
@@ -39,8 +39,7 @@
         android:layout_marginBottom="8dp"
         android:overScrollMode="ifContentScrolls"
         android:layout_marginTop="4dp"
-        android:maxHeight="240dp"
-        android:fillViewport="true">
+        android:maxHeight="240dp">
 
         <LinearLayout
             android:id="@+id/correction_list"
@@ -63,28 +62,14 @@
             android:id="@+id/button_revert_all"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingLeft="12dp"
-            android:paddingRight="12dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
             android:text="@string/overlay_button_revert"
-            android:textAllCaps="false"
             android:enabled="false" />
 
         <Button
             android:id="@+id/button_apply_all"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
             android:text="@string/overlay_button_apply_all"
-            android:textAllCaps="false"
             android:layout_marginStart="8dp"
             android:enabled="false" />
     </LinearLayout>
@@ -93,14 +78,7 @@
         android:id="@+id/button_dismiss"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:minHeight="0dp"
-        android:minWidth="0dp"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
         android:text="@string/overlay_button_dismiss"
-        android:textAllCaps="false"
         android:textColor="@color/overlay_text_secondary" />
 
 </LinearLayout>

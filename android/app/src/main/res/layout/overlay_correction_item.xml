@@ -36,14 +36,7 @@
         android:id="@+id/button_apply_single"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:minWidth="0dp"
-        android:minHeight="0dp"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
         android:text="@string/overlay_button_apply"
-        android:textAllCaps="false"
         android:textColor="@color/overlay_text_primary" />
 
 </LinearLayout>
