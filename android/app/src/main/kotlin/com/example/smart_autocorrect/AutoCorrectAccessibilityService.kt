@@ -5,8 +5,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.content.Intent
 import android.os.Bundle
-import android.text.TextUtils
 import android.util.Log
+import java.util.Locale
 
 class AutoCorrectAccessibilityService : AccessibilityService() {
     
@@ -91,7 +91,9 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
         
         var startIndex = 0
         for (word in words) {
-            val cleanWord = word.toLowerCase().replace(Regex("[^a-zA-Z]"), "")
+            val cleanWord = word
+                .lowercase(Locale.getDefault())
+                .replace(Regex("\\P{L}+"), "")
             val correction = correctionMap[cleanWord]
             
             if (correction != null) {
