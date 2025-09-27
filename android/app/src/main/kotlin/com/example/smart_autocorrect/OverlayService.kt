@@ -132,28 +132,28 @@ class OverlayService : Service() {
                 hideOverlay()
             }
 
-            val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            WindowManager.LayoutParams.TYPE_PHONE
 
             overlayParams = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                overlayType,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSLUCENT
-            ).apply {
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            overlayType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = lastOverlayX
                 y = lastOverlayY
-            }
+        }
 
-            try {
+        try {
                 windowManager?.addView(overlayView, overlayParams)
                 Log.d(TAG, "Overlay created")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to show overlay", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to show overlay", e)
                 return
             }
         }
@@ -291,7 +291,6 @@ class OverlayService : Service() {
         val params = overlayParams ?: return
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                params.extraFlags = params.extraFlags
                 dragTouchX = event.rawX
                 dragTouchY = event.rawY
                 dragStartX = params.x
