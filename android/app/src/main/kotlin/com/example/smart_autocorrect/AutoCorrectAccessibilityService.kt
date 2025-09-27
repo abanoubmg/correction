@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import java.util.Locale
+import org.json.JSONArray
 
 class AutoCorrectAccessibilityService : AccessibilityService() {
     
@@ -129,20 +130,7 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
     private fun checkForCorrections(text: String): List<CorrectionSuggestion> {
         val corrections = mutableListOf<CorrectionSuggestion>()
         val words = text.split("\\s+".toRegex())
-        
-        // Simple correction dictionary - in real app this would be loaded from storage
-        val correctionMap = mapOf(
-            "teh" to "the",
-            "recieve" to "receive",
-            "seperate" to "separate",
-            "definately" to "definitely",
-            "occured" to "occurred",
-            "necesary" to "necessary",
-            "accomodate" to "accommodate",
-            "acheive" to "achieve",
-            "beleive" to "believe",
-            "wierd" to "weird"
-        )
+        val correctionMap = getCorrectionMap()
         
         var startIndex = 0
         for (word in words) {
@@ -166,6 +154,51 @@ class AutoCorrectAccessibilityService : AccessibilityService() {
         }
         
         return corrections
+    }
+
+    private fun getCorrectionMap(): Map<String, String> {
+        val locale = Locale.getDefault()
+        val map = mutableMapOf(
+            "teh" to "the",
+            "recieve" to "receive",
+            "seperate" to "separate",
+            "definately" to "definitely",
+            "occured" to "occurred",
+            "necesary" to "necessary",
+            "accomodate" to "accommodate",
+            "acheive" to "achieve",
+            "beleive" to "believe",
+            "wierd" to "weird",
+            "thier" to "their",
+            "youre" to "you're",
+            "its" to "it's",
+            "dont" to "don't",
+            "cant" to "can't"
+        )
+
+        try {
+            val prefs = getSharedPreferences("smart_autocorrect", MODE_PRIVATE)
+            val rulesJson = prefs.getString("correction_rules", null)
+            if (!rulesJson.isNullOrBlank()) {
+                val array = JSONArray(rulesJson)
+                for (i in 0 until array.length()) {
+                    val obj = array.optJSONObject(i) ?: continue
+                    val isActive = obj.optBoolean("isActive", true)
+                    val misspelled = obj.optString("misspelled", "")
+                    val correction = obj.optString("correction", "")
+                    if (isActive && misspelled.isNotBlank() && correction.isNotBlank()) {
+                        val key = misspelled.lowercase(locale).replace(Regex("\\P{L}+"), "")
+                        if (key.isNotBlank()) {
+                            map[key] = correction
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load custom correction rules", e)
+        }
+
+        return map
     }
 
     private fun overlayEnabled(): Boolean {
